@@ -13,3 +13,10 @@
 # IDEs
 *.iml
 .idea
+.
+
+**/node_modules/
+
+artifacts/
+
+integration-testing/deploy-columbus.ts
