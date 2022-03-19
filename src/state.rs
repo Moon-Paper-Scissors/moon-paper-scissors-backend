@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Coin};
 use cw_controllers::Admin;
-use cw_storage_plus::{
-    Index, IndexList, IndexedMap, Map, MultiIndex, U8Key, UniqueIndex,
-};
-use cw_storage_plus::{I32Key};
+use cw_storage_plus::I32Key;
+use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex, U8Key, UniqueIndex};
 
 use std::fmt;
 
@@ -20,8 +18,6 @@ pub enum GameMove {
 impl fmt::Display for GameMove {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-        // or, alternatively:
-        // fmt::Debug::fmt(self, f)
     }
 }
 
@@ -31,7 +27,7 @@ pub enum PlayerMove {
     HashedMove(String),
 }
 
-// will be using this both for hand result and game result
+// Will be using this both for hand result and game result
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum GameResult {
     Player1Wins,
@@ -39,18 +35,7 @@ pub enum GameResult {
     Tie,
 }
 
-// do i want to do this via a state, or via a calculation?
-// hand state will add some boiler plate but should be safer I think
-// what's nice about calculating is i don't have to set hand state, I can just get hand state
-// okay so i'll do it via calculation
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum HandState {
-    Committing,
-    Revealing,
-}
-
-// need to track wins and losses
-// eventually we want to track a history of hands, but not sure how to do that
+// Need to track wins and losses
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GameState {
     pub player1: Addr,
@@ -69,7 +54,6 @@ pub struct GameState {
 }
 
 pub struct GameIndexes<'a> {
-    // pk goes to second tuple element
     pub player1: UniqueIndex<'a, Addr, GameState>,
     pub player2: UniqueIndex<'a, Addr, GameState>,
 }
@@ -81,26 +65,13 @@ impl<'a> IndexList<GameState> for GameIndexes<'a> {
     }
 }
 
-// initially i was planning on having multiple games
-// per player at a time, but not anymore
-
 pub fn game_states<'a>() -> IndexedMap<'a, (&'a [u8], &'a [u8]), GameState, GameIndexes<'a>> {
     let indexes = GameIndexes {
-        player1: UniqueIndex::new(
-            |d: &GameState| (d.player1.clone()),
-            // what is this for?
-            "gamestate__player1",
-        ),
-        player2: UniqueIndex::new(
-            |d: &GameState| (d.player2.clone()),
-            // what is this for?
-            "gamestate__player2",
-        ),
+        player1: UniqueIndex::new(|d: &GameState| (d.player1.clone()), "gamestate__player1"),
+        player2: UniqueIndex::new(|d: &GameState| (d.player2.clone()), "gamestate__player2"),
     };
     IndexedMap::new("gamestate", indexes)
 }
-
-// how to track the queue of players?
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnmatchedPlayer {
@@ -115,20 +86,6 @@ pub const UNMATCHED_PLAYERS: Map<(String, U8Key), UnmatchedPlayer> = Map::new("u
 // ADMIN controller
 pub const ADMIN: Admin = Admin::new("admin");
 
-// i need a multi index for the leaderboard so that i can sort by winnings
-// // index_key() over MultiIndex works (empty pk)
-// // In a MultiIndex, an index key is composed by the index and the primary key.
-// // Primary key may be empty (so that to iterate over all elements that match just the index)
-// let key = (b"Maria".to_vec(), b"".to_vec());
-// // Use the index_key() helper to build the (raw) index key
-// let key = map.idx.name.index_key(key);
-// // Iterate using a bound over the raw key
-// let count = map
-//     .idx
-//     .name
-//     .range(&store, Some(Bound::inclusive(key)), None, Order::Ascending)
-//     .count();
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserProfile {
     pub address: Addr,
@@ -138,7 +95,6 @@ pub struct UserProfile {
 }
 
 pub struct LeaderboardIndexes<'a> {
-    // pk goes to second tuple element
     pub winnings: MultiIndex<'a, (I32Key, Vec<u8>), UserProfile>,
 }
 
