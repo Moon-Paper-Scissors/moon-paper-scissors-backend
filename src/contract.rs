@@ -1,14 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_binary, Addr, Attribute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, OwnedDeps, Response, StdError, StdResult,
+    to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Response, StdResult,
 };
 use cw0::maybe_addr;
 use cw2::set_contract_version;
-use cw_controllers::{AdminError, AdminResponse};
+
 use sha2::Digest;
-use std::convert::TryInto;
+
 
 use sha2::Sha256;
 use std::str;
@@ -19,7 +19,7 @@ use crate::msg::{
     GetLeaderboardResponse, GetOpenGamesResponse, InstantiateMsg, QueryMsg,
 };
 use crate::state::{
-    game_states, leaderboard, GameMove, GameResult, GameState, HandState, PlayerMove,
+    game_states, leaderboard, GameMove, GameResult, GameState, PlayerMove,
     UnmatchedPlayer, UserProfile, ADMIN, UNMATCHED_PLAYERS,
 };
 
@@ -114,7 +114,7 @@ pub fn try_join_game(
                 player1_bet_deposited: true,
                 player2_bet_deposited: true,
                 result: None,
-                num_hands_to_win: num_hands_to_win,
+                num_hands_to_win,
                 // updated_at: env.block.time.nanos() / 1_000_000,
                 updated_at: env.block.time.nanos(),
             };
@@ -153,7 +153,7 @@ pub fn try_join_game(
             let user_profile = UnmatchedPlayer {
                 address: info.sender.clone(),
                 bet_amount: info.funds.clone(),
-                num_hands_to_win: num_hands_to_win,
+                num_hands_to_win,
             };
 
             UNMATCHED_PLAYERS.save(
@@ -247,7 +247,7 @@ pub fn try_commit_move(
                 Ok(Response::new()
                     .add_attribute("action", "commit_move")
                     .add_attribute("players", format!("{}{}", player1_addr, player2_addr))
-                    .add_attribute("player_committed", info.sender.clone())
+                    .add_attribute("player_committed", info.sender)
                     .add_attribute(
                         "game_state",
                         serde_json::to_string(&updated_game_state).unwrap(),
@@ -270,7 +270,7 @@ pub fn try_commit_move(
                 Ok(Response::new()
                     .add_attribute("action", "commit_move")
                     .add_attribute("players", format!("{}{}", player1_addr, player2_addr))
-                    .add_attribute("player_committed", info.sender.clone())
+                    .add_attribute("player_committed", info.sender)
                     .add_attribute(
                         "game_state",
                         serde_json::to_string(&updated_game_state).unwrap(),
@@ -397,7 +397,7 @@ pub fn try_reveal_move(
                 // Get the hash from the player move and nonce
                 let move_hash = format!(
                     "{:x}",
-                    Sha256::digest(format!("{}{}", player_move.to_string(), nonce).as_bytes())
+                    Sha256::digest(format!("{}{}", player_move, nonce).as_bytes())
                 );
 
                 // Verify that the hashes match up
@@ -419,7 +419,7 @@ pub fn try_reveal_move(
                 // Check if opponent has already revealed move
                 // if so handle the hand result
                 let res = if let Some(PlayerMove::GameMove(player2_game_move)) =
-                    game_state.player2_move.clone()
+                    game_state.player2_move
                 {
                     // Reset player moves
                     updated_game_state.player1_move = None;
@@ -435,7 +435,7 @@ pub fn try_reveal_move(
                     Ok(Response::new()
                         .add_attribute("action", "reveal_move")
                         .add_attribute("players", format!("{}{}", player1_addr, player2_addr))
-                        .add_attribute("player_revealed", info.sender.clone())
+                        .add_attribute("player_revealed", info.sender)
                         .add_attribute(
                             "game_state",
                             serde_json::to_string(&updated_game_state).unwrap(),
@@ -449,7 +449,7 @@ pub fn try_reveal_move(
                 // Get the hash from the player move and nonce
                 let move_hash = format!(
                     "{:x}",
-                    Sha256::digest(format!("{}{}", player_move.to_string(), nonce).as_bytes())
+                    Sha256::digest(format!("{}{}", player_move, nonce).as_bytes())
                 );
 
                 // Verify that the hashes match up
@@ -471,7 +471,7 @@ pub fn try_reveal_move(
                 // Check if opponent has already revealed move
                 // if so handle the hand result
                 let res = if let Some(PlayerMove::GameMove(player1_game_move)) =
-                    game_state.player1_move.clone()
+                    game_state.player1_move
                 {
                     // Reset player moves
                     updated_game_state.player1_move = None;
@@ -487,7 +487,7 @@ pub fn try_reveal_move(
                     Ok(Response::new()
                         .add_attribute("action", "reveal_move")
                         .add_attribute("players", format!("{}{}", player1_addr, player2_addr))
-                        .add_attribute("player_revealed", info.sender.clone())
+                        .add_attribute("player_revealed", info.sender)
                         .add_attribute(
                             "game_state",
                             serde_json::to_string(&updated_game_state).unwrap(),
@@ -569,7 +569,7 @@ pub fn try_claim_game(
                         update_leaderboard(
                             deps,
                             player1_addr.clone(),
-                            player2_addr.clone(),
+                            player2_addr,
                             GameResult::Player1Wins,
                             game_state.bet_amount.clone(),
                         )?;
@@ -593,7 +593,7 @@ pub fn try_claim_game(
                         // Update the leaderboard to reflect that player2 "won"
                         update_leaderboard(
                             deps,
-                            player1_addr.clone(),
+                            player1_addr,
                             player2_addr.clone(),
                             GameResult::Player2Wins,
                             game_state.bet_amount.clone(),
@@ -691,7 +691,7 @@ pub fn try_forfeit_game(
     }
 
     // Game doesn't exist
-    return Err(ContractError::InvalidGame {});
+    Err(ContractError::InvalidGame {})
 }
 
 /// Helper function for getting a game result based on host and opp moves
@@ -723,8 +723,8 @@ fn send_double_tokens(to_address: Addr, amount: Vec<Coin>) -> Response {
             amount: amount.clone(),
         }),
         CosmosMsg::Bank(BankMsg::Send {
-            to_address: to_address.clone().into(),
-            amount: amount.clone(),
+            to_address: to_address.into(),
+            amount: amount,
         }),
     ])
 }
@@ -934,15 +934,15 @@ pub fn get_game_by_player(deps: Deps, player: String) -> StdResult<GetGameByPlay
         .collect::<Vec<_>>();
 
     if unmatched_players.contains(&player_addr) {
-        return Ok(GetGameByPlayerResponse {
+        Ok(GetGameByPlayerResponse {
             game: None,
             waiting_for_opponent: true,
-        });
+        })
     } else {
-        return Ok(GetGameByPlayerResponse {
+        Ok(GetGameByPlayerResponse {
             game: None,
             waiting_for_opponent: false,
-        });
+        })
     }
 }
 
