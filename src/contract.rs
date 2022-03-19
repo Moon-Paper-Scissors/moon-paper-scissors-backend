@@ -55,17 +55,10 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let api = deps.api;
     match msg {
-        // ExecuteMsg::StartGame { player2 } => try_start_game(deps, info, player2),
-        // ExecuteMsg::JoinGame { player1 } => try_join_game(deps, info, player1),
         ExecuteMsg::JoinGame { num_hands_to_win } => {
             try_join_game(deps, env, info, num_hands_to_win)
         }
         ExecuteMsg::LeaveWaitingQueue {} => try_leave_waiting_queue(deps, env, info),
-        // ExecuteMsg::UpsertGameWithMove {
-        //     player1,
-        //     player2,
-        //     hashed_move,
-        // } => try_upsert_game_with_move(deps, info, player1, player2, hashed_move),
         ExecuteMsg::CommitMove {
             player1,
             player2,
@@ -89,165 +82,17 @@ pub fn execute(
     }
 }
 
-// could try and squeeze all of the logic into the commit move transaction
-// or else could separate them out.
-// i'll separate them out. one of them expects funds, the other one doesn't
-// you can expect funds dynamically, but this seems cleaner
-// pub fn try_upsert_game_with_move(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     player1: String,
-//     player2: String,
-//     hashed_move: String,
-// ) -> Result<Response, ContractError> {
-//     // validators. Can only commit move if:
-
-//     let player1_addr = deps.api.addr_validate(&player1)?;
-//     let player2_addr = deps.api.addr_validate(&player2)?;
-
-//     let maybe_game_state =
-//         game_states().may_load(deps.storage, (player1.as_bytes(), player2.as_bytes()))?;
-
-//     match maybe_game_state {
-//         Some(game_state) => {
-//             // game has already been created
-
-//             if info.funds != game_state.bet_amount {
-//                 return Err(ContractError::IncorrectFunds {});
-//             }
-
-//             if info.sender == player1_addr {
-//                 // playing for player 1
-//                 let updated_game_state = GameState {
-//                     player1_move: Some(PlayerMove::HashedMove(hashed_move)),
-//                     player1_bet_deposited: true,
-//                     ..game_state
-//                 };
-
-//                 // TODO should I be using save or update?
-//                 game_states().save(
-//                     deps.storage,
-//                     (player1.as_bytes(), player2.as_bytes()),
-//                     &updated_game_state,
-//                 )?;
-
-//                 Ok(Response::new())
-//             } else if info.sender == player2_addr {
-//                 // playing for player 2
-//                 let updated_game_state = GameState {
-//                     player2_move: Some(PlayerMove::HashedMove(hashed_move)),
-//                     player2_bet_deposited: true,
-//                     ..game_state
-//                 };
-
-//                 // TODO should I be using save or update?
-//                 game_states().save(
-//                     deps.storage,
-//                     (player1.as_bytes(), player2.as_bytes()),
-//                     &updated_game_state,
-//                 )?;
-
-//                 Ok(Response::new())
-//             } else {
-//                 // TODO revisit error
-//                 return Err(ContractError::Unauthorized {});
-//             }
-//         }
-//         None => {
-//             // game has not been created yet, so create it
-
-//             // what is better than info.sender.clone() ?
-//             let mut game_state = GameState {
-//                 player1: player1_addr.clone(),
-//                 player2: player2_addr.clone(),
-//                 player1_move: None,
-//                 player2_move: None,
-//                 player1_hands_won: 0,
-//                 player2_hands_won: 0,
-//                 hands_tied: 0,
-//                 bet_amount: info.funds,
-//                 player1_bet_deposited: false,
-//                 player2_bet_deposited: false,
-//                 result: None,
-//                 num_hands_to_win: 2,
-//             };
-
-//             if info.sender == player1_addr {
-//                 // player 1 is creating the game
-
-//                 game_state.player1_move = Some(PlayerMove::HashedMove(hashed_move));
-//                 game_state.player1_bet_deposited = true;
-//             } else if info.sender == player2_addr {
-//                 // player 2 is creating the game
-
-//                 game_state.player2_move = Some(PlayerMove::HashedMove(hashed_move));
-//                 game_state.player2_bet_deposited = true;
-//             } else {
-//                 // not authorized to create a game that you are not participating in
-
-//                 return Err(ContractError::Unauthorized {});
-//             }
-
-//             game_states().save(
-//                 deps.storage,
-//                 (
-//                     player1_addr.into_string().as_bytes(),
-//                     player2_addr.into_string().as_bytes(),
-//                 ),
-//                 &game_state,
-//             )?;
-
-//             Ok(Response::new())
-//         }
-//     }
-// }
-
-// pub fn try_start_game(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     player2: String,
-// ) -> Result<Response, ContractError> {
-//     let player2_addr = deps.api.addr_validate(&player2)?;
-
-//     // what is better than info.sender.clone() ?
-//     let game_state = GameState {
-//         player1: info.sender.clone(),
-//         player2: player2_addr.clone(),
-//         player1_move: None,
-//         player2_move: None,
-//         player1_hands_won: 0,
-//         player2_hands_won: 0,
-//         hands_tied: 0,
-//         bet_amount: info.funds,
-//         player1_bet_deposited: true,
-//         player2_bet_deposited: false,
-//         result: None,
-//         num_hands_to_win: 2,
-//     };
-
-//     game_states().save(
-//         deps.storage,
-//         (
-//             info.sender.into_string().as_bytes(),
-//             player2_addr.into_string().as_bytes(),
-//         ),
-//         &game_state,
-//     )?;
-
-//     Ok(Response::new())
-// }
-
 pub fn try_join_game(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     num_hands_to_win: u8,
 ) -> Result<Response, ContractError> {
-    // validators. can only join game if
+    // Validators. can only join game if
     // - you are specified as player 2
     // - you pay the necessary funds
 
-    // check if there is a player waiting with the same funds
+    // Check if there is a player waiting with the same funds
     let maybe_unmatched_player = UNMATCHED_PLAYERS.may_load(
         deps.storage,
         (format!("{:?}", info.funds), U8Key::new(num_hands_to_win)),
@@ -255,12 +100,8 @@ pub fn try_join_game(
 
     match maybe_unmatched_player {
         Some(unmatched_player) => {
-            // found a competitor player
-            // do i want to save to game_state on player 1 or player 2?
-            // ideally on player 1, but then how does it get saved into the index?
-            // now i'll just do it when the second player joins
+            // Found a competitor player
 
-            // what is better than info.sender.clone() ?
             let game_state = GameState {
                 player1: unmatched_player.address.clone(),
                 player2: info.sender.clone(),
@@ -295,7 +136,7 @@ pub fn try_join_game(
                 &game_state,
             )?;
 
-            // goal is for frontend to know when it finds a game with an opponent
+            // Goal is for frontend to know when it finds a game with an opponent by reading attributes off the transaction
             Ok(Response::new()
                 .add_attribute("action", "join_game")
                 .add_attribute(
@@ -306,8 +147,8 @@ pub fn try_join_game(
                 .add_attribute("game_state", serde_json::to_string(&game_state).unwrap()))
         }
         None => {
-            // didn't find a competitor
-            // add this player to the unmatched pool
+            // Didn't find a competitor
+            // Add this player to the unmatched pool
 
             let user_profile = UnmatchedPlayer {
                 address: info.sender.clone(),
@@ -321,7 +162,7 @@ pub fn try_join_game(
                 &user_profile,
             )?;
 
-            // goal is for frontend to know when it finds a game with an opponent
+            // Goal is for frontend to know when it finds a game with an opponent
             Ok(Response::new()
                 .add_attribute("action", "join_game")
                 .add_attribute("players", format!("{}", info.sender))
@@ -335,7 +176,7 @@ pub fn try_leave_waiting_queue(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // check if the player is waiting for a game
+    // Check if the player is waiting for a game
     let query_res = UNMATCHED_PLAYERS
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
@@ -343,7 +184,7 @@ pub fn try_leave_waiting_queue(
     let maybe_unmatched_player = query_res.iter().find(|(_, b)| b.address == info.sender);
 
     if let Some((_, unmatched_player)) = maybe_unmatched_player {
-        // remove the user from the queue
+        // Remove the user from the queue
         UNMATCHED_PLAYERS.remove(
             deps.storage,
             (
@@ -352,7 +193,7 @@ pub fn try_leave_waiting_queue(
             ),
         );
 
-        // send the user their money back
+        // Send the user their money back
         Ok(Response::new()
             .add_messages(vec![CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.clone().into(),
@@ -361,6 +202,7 @@ pub fn try_leave_waiting_queue(
             .add_attribute("action", "leave_waiting_queue")
             .add_attribute("players", format!("{}", info.sender)))
     } else {
+        // Can't leave queue
         Err(ContractError::InvalidGame {})
     }
 }
@@ -373,7 +215,7 @@ pub fn try_commit_move(
     player2: String,
     hashed_move: String,
 ) -> Result<Response, ContractError> {
-    // validators. Can only commit move if:
+    // Validators. Can only commit move if:
     // - the game has started and is not finished
     //   - this means both players paid their bets
     // - you are either player 1 or player 2
@@ -388,15 +230,14 @@ pub fn try_commit_move(
     match maybe_game_state {
         Some(game_state) => {
             if info.sender == player1_addr {
-                // playing for player 1
+                // Playing for player 1
                 let updated_game_state = GameState {
                     player1_move: Some(PlayerMove::HashedMove(hashed_move)),
                     updated_at: env.block.time.nanos(),
-                    // updated_at: env.block.time.nanos() / 1_000_000,
                     ..game_state
                 };
 
-                // TODO should I be using save or update?
+                // Save the updated game state
                 game_states().save(
                     deps.storage,
                     (player1.as_bytes(), player2.as_bytes()),
@@ -412,15 +253,14 @@ pub fn try_commit_move(
                         serde_json::to_string(&updated_game_state).unwrap(),
                     ))
             } else if info.sender == player2_addr {
-                // playing for player 2
+                // Playing for player 2
                 let updated_game_state = GameState {
                     player2_move: Some(PlayerMove::HashedMove(hashed_move)),
-                    // updated_at: env.block.time.nanos() / 1_000_000,
                     updated_at: env.block.time.nanos(),
                     ..game_state
                 };
 
-                // TODO should I be using save or update?
+                // Save the updated game state
                 game_states().save(
                     deps.storage,
                     (player1.as_bytes(), player2.as_bytes()),
@@ -436,10 +276,11 @@ pub fn try_commit_move(
                         serde_json::to_string(&updated_game_state).unwrap(),
                     ))
             } else {
-                // TODO revisit error
-                return Err(ContractError::Unauthorized {});
+                // Can't play for a game where you are neither player 1 nor player 2
+                Err(ContractError::Unauthorized {})
             }
         }
+        // Game doesn't exist
         None => Err(ContractError::InvalidGame {}),
     }
 }
@@ -451,12 +292,14 @@ pub fn update_leaderboard(
     game_result: GameResult,
     bet_amount: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-    // update the user profiles involved to reflect winning / losing
+    // Update the user profiles involved to reflect winning / losing
     // but only if the game is over
-    let maybe_player1_profile = leaderboard().may_load(deps.storage, player1_addr.as_bytes())?;
 
+    // Get the player 1 and player 2 profiles
+    let maybe_player1_profile = leaderboard().may_load(deps.storage, player1_addr.as_bytes())?;
     let maybe_player2_profile = leaderboard().may_load(deps.storage, player2_addr.as_bytes())?;
 
+    // If they don't have an entry in the leaderboard yet, get default entries
     let mut updated_player1_profile = if let Some(player1_profile) = maybe_player1_profile {
         player1_profile
     } else {
@@ -479,34 +322,31 @@ pub fn update_leaderboard(
         }
     };
 
-    // increment num games played
+    // Increment num games played for both players
     updated_player1_profile.num_games_played += 1;
     updated_player2_profile.num_games_played += 1;
 
     if let GameResult::Player1Wins = game_result {
-        // increment num games 1 for player 1
+        // Increment num games 1 for player 1
         updated_player1_profile.num_games_won += 1;
 
-        // add to player 1 winnings
-        // TODO buggy code
+        // Add to player 1 winnings
         updated_player1_profile.winnings += bet_amount[0].amount.u128() as i32;
 
-        // subtract from player 2 winnings
-
+        // Subtract from player 2 winnings
         updated_player2_profile.winnings -= bet_amount[0].amount.u128() as i32;
     } else {
-        // increment num games 1 for player 1
+        // Increment num games 1 for player 1
         updated_player2_profile.num_games_won += 1;
 
-        // add to player 1 winnings
-        // TODO buggy code
+        // Add to player 1 winnings
         updated_player2_profile.winnings += bet_amount[0].amount.u128() as i32;
 
-        // subtract from player 2 winnings
-
+        // Subtract from player 2 winnings
         updated_player1_profile.winnings -= bet_amount[0].amount.u128() as i32;
     };
 
+    // Save user profiles to the leaderboard
     leaderboard().save(
         deps.storage,
         player1_addr.as_bytes(),
@@ -531,12 +371,13 @@ pub fn try_reveal_move(
     player_move: GameMove,
     nonce: String,
 ) -> Result<Response, ContractError> {
-    // validators. Can only reveal move if:
+    // Validators. Can only reveal move if:
     // - the game has started and is not finished
     //   - this means both players paid their bets
     // - you are either player 1 or player 2
     // - both players have committed their move
 
+    // Get both player addresses
     let player1_addr = deps.api.addr_validate(&player1)?;
     let player2_addr = deps.api.addr_validate(&player2)?;
 
@@ -546,51 +387,45 @@ pub fn try_reveal_move(
     match maybe_game_state {
         Some(game_state) => {
             let mut updated_game_state = GameState {
-                // updated_at: env.block.time.nanos() / 1_000_000,
                 updated_at: env.block.time.nanos(),
                 ..game_state.clone()
             };
 
             let res = if info.sender == player1_addr {
-                // playing for player 1
+                // Playing for player 1
 
+                // Get the hash from the player move and nonce
                 let move_hash = format!(
                     "{:x}",
                     Sha256::digest(format!("{}{}", player_move.to_string(), nonce).as_bytes())
                 );
 
+                // Verify that the hashes match up
                 if let Some(PlayerMove::HashedMove(hashed_move)) = game_state.clone().player1_move {
-                    // look into [u8] vs String
-                    if hashed_move == move_hash {
-                        // we good
-                    } else {
-                        // error, hashes don't match
+                    if hashed_move != move_hash {
                         return Err(ContractError::Unauthorized {});
                     }
                 } else {
-                    // error because player hasn't committed their move yet
-                    // TODO update error
+                    // Error because player hasn't committed their move yet
+                    // Need to commit before they can reveal
                     return Err(ContractError::Unauthorized {});
                 }
 
+                // Update game move
                 let player1_game_move = player_move;
-
                 updated_game_state.player1_move =
                     Some(PlayerMove::GameMove(player1_game_move.clone()));
 
-                // TODO check if opponent has revealed its move
-                // and update the game state accordingly
+                // Check if opponent has already revealed move
+                // if so handle the hand result
                 let res = if let Some(PlayerMove::GameMove(player2_game_move)) =
                     game_state.player2_move.clone()
                 {
-                    // reset player moves
+                    // Reset player moves
                     updated_game_state.player1_move = None;
                     updated_game_state.player2_move = None;
 
-                    // // get hand result
-                    // let result = get_result(player1_game_move.clone(), player2_game_move);
-
-                    // handle result accordingly
+                    // Handle result accordingly
                     handle_hand_result(
                         &mut updated_game_state,
                         player1_game_move,
@@ -609,24 +444,22 @@ pub fn try_reveal_move(
 
                 res
             } else if info.sender == player2_addr {
-                // playing for player 2
+                // Playing for player 2
 
+                // Get the hash from the player move and nonce
                 let move_hash = format!(
                     "{:x}",
                     Sha256::digest(format!("{}{}", player_move.to_string(), nonce).as_bytes())
                 );
 
+                // Verify that the hashes match up
                 if let Some(PlayerMove::HashedMove(hashed_move)) = game_state.clone().player2_move {
-                    // look into [u8] vs String
-                    if hashed_move == move_hash {
-                        // we good
-                    } else {
-                        // error, hashes don't match
+                    if hashed_move != move_hash {
                         return Err(ContractError::Unauthorized {});
                     }
                 } else {
-                    // error because player hasn't committed their move yet
-                    // TODO update error
+                    // Error because player hasn't committed their move yet
+                    // Need to commit before they can reveal
                     return Err(ContractError::Unauthorized {});
                 }
 
@@ -635,19 +468,16 @@ pub fn try_reveal_move(
                 updated_game_state.player2_move =
                     Some(PlayerMove::GameMove(player2_game_move.clone()));
 
-                // TODO check if opponent has revealed its move
-                // and update the game state accordingly
+                // Check if opponent has already revealed move
+                // if so handle the hand result
                 let res = if let Some(PlayerMove::GameMove(player1_game_move)) =
                     game_state.player1_move.clone()
                 {
-                    // reset player moves
+                    // Reset player moves
                     updated_game_state.player1_move = None;
                     updated_game_state.player2_move = None;
 
-                    // // get hand result
-                    // let result = get_result(player1_game_move, player2_game_move.clone());
-
-                    // handle result accordingly
+                    // Handle result accordingly
                     handle_hand_result(
                         &mut updated_game_state,
                         player1_game_move,
@@ -666,16 +496,17 @@ pub fn try_reveal_move(
 
                 res
             } else {
-                // TODO revisit error
+                // Can't reveal move for a game you don't belong to
                 return Err(ContractError::Unauthorized {});
             };
 
-            // update the game_states table and leaderboard table
+            // Handle state updates depending on whether or not the game is complete
             if let Some(game_result) = updated_game_state.result {
-                // the game is over
+                // The game is over
                 // so remove the game from the game states
                 game_states().remove(deps.storage, (player1.as_bytes(), player2.as_bytes()))?;
 
+                // Update the leaderboard based on the final state of the game
                 update_leaderboard(
                     deps,
                     player1_addr,
@@ -684,10 +515,9 @@ pub fn try_reveal_move(
                     updated_game_state.bet_amount,
                 )?;
             } else {
-                // the game is not over
+                // The game is not over
                 // so update the game state
 
-                // TODO should I be using save or update?
                 game_states().save(
                     deps.storage,
                     (player1.as_bytes(), player2.as_bytes()),
@@ -695,11 +525,11 @@ pub fn try_reveal_move(
                 )?;
             }
 
-            // return the response / error
+            // Return the response / error
             res
         }
         None => {
-            // TODO revisit this error type
+            // Game doesn't exist
             Err(ContractError::InvalidGame {})
         }
     }
@@ -722,20 +552,20 @@ pub fn try_claim_game(
         Some(game_state) => {
             let one_minute = 60 * 1_000;
 
+            // Can only claim a game if it's been 1 minute since the game was last updated
             if game_state.updated_at + one_minute < env.block.time.nanos() {
-                // 1_000_000
-                // check that a player is blocked
                 match (game_state.player1_move, game_state.player2_move) {
                     (Some(PlayerMove::GameMove(_)), Some(PlayerMove::HashedMove(_)))
                     | (Some(PlayerMove::HashedMove(_)), None) => {
-                        // player 1 is stuck because player 2 is refusing to reveal
+                        // Player 1 is stuck because player 2 is refusing to reveal
                         // or
-                        // player 1 is stuck because player 2 is refusing to make a move
+                        // Player 1 is stuck because player 2 is refusing to make a move
 
-                        // delete the game
+                        // Delete the game
                         game_states()
                             .remove(deps.storage, (player1.as_bytes(), player2.as_bytes()))?;
 
+                        // Update leaderboard to reflect that player1 "won"
                         update_leaderboard(
                             deps,
                             player1_addr.clone(),
@@ -744,7 +574,7 @@ pub fn try_claim_game(
                             game_state.bet_amount.clone(),
                         )?;
 
-                        // pay the winner
+                        // Pay the winner
                         Ok(send_double_tokens(player1_addr, game_state.bet_amount)
                             .add_attribute("action", "claim_game")
                             .add_attribute("players", format!("{}{}", player1, player2))
@@ -752,14 +582,15 @@ pub fn try_claim_game(
                     }
                     (Some(PlayerMove::HashedMove(_)), Some(PlayerMove::GameMove(_)))
                     | (None, Some(PlayerMove::HashedMove(_))) => {
-                        // player 2 is stuck because player 1 is refusing to reveal
+                        // Player 2 is stuck because player 1 is refusing to reveal
                         // or
-                        // player 2 is stuck because player 1 is refusing to make a move
+                        // Player 2 is stuck because player 1 is refusing to make a move
 
-                        // delete the game
+                        // Delete the game
                         game_states()
                             .remove(deps.storage, (player1.as_bytes(), player2.as_bytes()))?;
 
+                        // Update the leaderboard to reflect that player2 "won"
                         update_leaderboard(
                             deps,
                             player1_addr.clone(),
@@ -768,7 +599,7 @@ pub fn try_claim_game(
                             game_state.bet_amount.clone(),
                         )?;
 
-                        // pay the winner
+                        // Pay the winner
                         Ok(send_double_tokens(player2_addr, game_state.bet_amount)
                             .add_attribute("action", "claim_game")
                             .add_attribute("players", format!("{}{}", player1, player2))
@@ -777,9 +608,11 @@ pub fn try_claim_game(
                     (_, _) => Err(ContractError::Unauthorized {}),
                 }
             } else {
+                // Can't claim a game for which sufficient time hasn't passed
                 Err(ContractError::Unauthorized {})
             }
         }
+        // Game doesn't exist
         None => Err(ContractError::InvalidGame {}),
     }
 }
@@ -789,19 +622,20 @@ pub fn try_forfeit_game(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // check if there exists a game where player is player1
+    // Check if there exists a game where player is player1
     let maybe_game_tuple1 = game_states()
         .idx
         .player1
         .item(deps.storage, info.sender.clone())?;
 
     if let Some((_, game_state)) = maybe_game_tuple1 {
-        // delete the game
+        // Delete the game
         game_states().remove(
             deps.storage,
             (game_state.player1.as_bytes(), game_state.player2.as_bytes()),
         )?;
 
+        // Update the leaderboard to reflect the forfeit
         update_leaderboard(
             deps,
             game_state.player1.clone(),
@@ -810,7 +644,7 @@ pub fn try_forfeit_game(
             game_state.bet_amount.clone(),
         )?;
 
-        // pay the winner
+        // Pay the winner
         return Ok(
             send_double_tokens(game_state.player2.clone(), game_state.bet_amount)
                 .add_attribute("action", "forfeit_game")
@@ -822,19 +656,20 @@ pub fn try_forfeit_game(
         );
     }
 
-    // check if there exists a game where player is player2
+    // Check if there exists a game where player is player2
     let maybe_game_tuple2 = game_states()
         .idx
         .player2
         .item(deps.storage, info.sender.clone())?;
 
     if let Some((_, game_state)) = maybe_game_tuple2 {
-        // delete the game
+        // Delete the game
         game_states().remove(
             deps.storage,
             (game_state.player1.as_bytes(), game_state.player2.as_bytes()),
         )?;
 
+        // Update the leaderboard to reflect the forfeit
         update_leaderboard(
             deps,
             game_state.player1.clone(),
@@ -843,7 +678,7 @@ pub fn try_forfeit_game(
             game_state.bet_amount.clone(),
         )?;
 
-        // pay the winner
+        // Pay the winner
         return Ok(
             send_double_tokens(game_state.player1.clone(), game_state.bet_amount)
                 .add_attribute("action", "forfeit_game")
@@ -855,9 +690,11 @@ pub fn try_forfeit_game(
         );
     }
 
+    // Game doesn't exist
     return Err(ContractError::InvalidGame {});
 }
 
+/// Helper function for getting a game result based on host and opp moves
 fn get_result(host_move: GameMove, opp_move: GameMove) -> GameResult {
     match (host_move, opp_move) {
         // rock and paper
@@ -876,7 +713,7 @@ fn get_result(host_move: GameMove, opp_move: GameMove) -> GameResult {
     }
 }
 
-// this is a helper to move the tokens, so the business logic is easy to read
+/// Helper function for sending 2 times a coin amount to an address
 fn send_double_tokens(to_address: Addr, amount: Vec<Coin>) -> Response {
     // let attributes = vec![attr("action", action), attr("to", to_address.clone())];
 
@@ -892,8 +729,9 @@ fn send_double_tokens(to_address: Addr, amount: Vec<Coin>) -> Response {
     ])
 }
 
+// Function for making appriopriate payments and emitting apprioriate message attributes
+// based on the result of a hand
 fn handle_hand_result(
-    // result: GameResult,
     updated_game_state: &mut GameState,
     player1_game_move: GameMove,
     player2_game_move: GameMove,
@@ -1036,10 +874,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetGames { start_after, limit } => {
             to_binary(&get_games(deps, start_after, limit)?)
         }
-        // QueryMsg::GetGamesByHost { host } => to_binary(&get_games_by_host(deps, host)?),
-        // QueryMsg::GetGamesByOpponent { opponent } => {
-        //     to_binary(&get_games_by_opponent(deps, opponent)?)
-        // }
         QueryMsg::Admin {} => to_binary(&ADMIN.query_admin(deps)?),
     }
 }
@@ -1140,7 +974,6 @@ pub fn get_leaderboard(
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    // look into efficiency of this code
     let leaderboard = res.iter().map(|(_, b)| b.clone()).collect();
 
     Ok(GetLeaderboardResponse { leaderboard })
@@ -1158,7 +991,6 @@ pub fn get_open_games(
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    // look into efficiency of this code
     let open_games = res.iter().map(|(_, b)| b.clone()).collect();
 
     Ok(GetOpenGamesResponse { open_games })
@@ -1176,47 +1008,10 @@ pub fn get_games(
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    // look into efficiency of this code
     let game_states = res.iter().map(|(_, b)| b.clone()).collect();
 
     Ok(GetGamesResponse { games: game_states })
 }
-
-// pub fn get_games_by_host(deps: Deps, host: String) -> StdResult<GetGamesResponse> {
-//     let host_addr = deps.api.addr_validate(&host)?;
-
-//     let res = game_states()
-//         .idx
-//         .player1
-//         .prefix(host_addr.into())
-//         .range(deps.storage, None, None, Order::Ascending)
-//         .collect::<StdResult<Vec<_>>>()?;
-
-//     // look into efficiency of this code
-//     let host_game_states = res.iter().map(|(_, b)| b.clone()).collect();
-
-//     Ok(GetGamesResponse {
-//         games: host_game_states,
-//     })
-// }
-
-// pub fn get_games_by_opponent(deps: Deps, opponent: String) -> StdResult<GetGamesResponse> {
-//     let opponent_addr = deps.api.addr_validate(&opponent)?;
-
-//     let res = game_states()
-//         .idx
-//         .player2
-//         .prefix(opponent_addr.into())
-//         .range(deps.storage, None, None, Order::Ascending)
-//         .collect::<StdResult<Vec<_>>>()?;
-
-//     // look into efficiency of this code
-//     let opponent_game_states = res.iter().map(|(_, b)| b.clone()).collect();
-
-//     Ok(GetGamesResponse {
-//         games: opponent_game_states,
-//     })
-// }
 
 #[cfg(test)]
 mod tests {
@@ -1225,366 +1020,6 @@ mod tests {
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, from_binary};
-
-    // #[test]
-    // fn start_game() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create hosts
-    //     let player1 = mock_info("player1", &coins(2, "token"));
-
-    //     // create start game messages
-    //     let msg1 = ExecuteMsg::StartGame {
-    //         player2: String::from("player2"),
-    //     };
-
-    //     // start game
-    //     execute(deps.as_mut(), mock_env(), player1.clone(), msg1).unwrap();
-    //     let game_state1 = GameState {
-    //         player1: Addr::unchecked("player1"),
-    //         player2: Addr::unchecked("player2"),
-    //         player1_move: None,
-    //         player2_move: None,
-    //         player1_hands_won: 0,
-    //         player2_hands_won: 0,
-    //         hands_tied: 0,
-    //         bet_amount: coins(2, "token"),
-    //         player1_bet_deposited: true,
-    //         player2_bet_deposited: false,
-    //         result: None,
-    //         num_hands_to_win: 2,
-    //     };
-
-    //     let query_game = QueryMsg::GetGame {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //     };
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state1);
-    // }
-
-    // #[test]
-    // fn join_game() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create players
-    //     let player1 = mock_info("player1", &coins(2, "token"));
-    //     let player2 = mock_info("player2", &coins(2, "token"));
-
-    //     // create start game messages
-    //     let start_game_message = ExecuteMsg::StartGame {
-    //         player2: String::from("player2"),
-    //     };
-
-    //     // start game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         start_game_message,
-    //     )
-    //     .unwrap();
-    //     let game_state1 = GameState {
-    //         player1: Addr::unchecked("player1"),
-    //         player2: Addr::unchecked("player2"),
-    //         player1_move: None,
-    //         player2_move: None,
-    //         player1_hands_won: 0,
-    //         player2_hands_won: 0,
-    //         hands_tied: 0,
-    //         bet_amount: coins(2, "token"),
-    //         player1_bet_deposited: true,
-    //         player2_bet_deposited: false,
-    //         result: None,
-    //         num_hands_to_win: 2,
-    //     };
-
-    //     let query_game = QueryMsg::GetGame {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //     };
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state1);
-
-    //     let join_game_message = ExecuteMsg::JoinGame {
-    //         player1: String::from("player1"),
-    //     };
-
-    //     // start game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         join_game_message,
-    //     )
-    //     .unwrap();
-
-    //     let game_state2 = GameState {
-    //         player2_bet_deposited: true,
-    //         ..game_state1
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-    //     assert_eq!(game.game.unwrap(), game_state2);
-    // }
-
-    // #[test]
-    // fn play_game() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create players
-    //     let player1_funds = mock_info("player1", &coins(2, "token"));
-    //     let player1 = mock_info("player1", &coins(0, "token"));
-    //     let player2_funds = mock_info("player2", &coins(2, "token"));
-    //     let player2 = mock_info("player2", &coins(0, "token"));
-
-    //     // create start game messages
-    //     let join_game_message = ExecuteMsg::JoinGame {
-    //         num_hands_to_win: 2,
-    //     };
-
-    //     // player 1 join game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1_funds.clone(),
-    //         join_game_message.clone(),
-    //     )
-    //     .unwrap();
-
-    //     // player 2 join game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2_funds.clone(),
-    //         join_game_message.clone(),
-    //     )
-    //     .unwrap();
-
-    //     let game_state1 = GameState {
-    //         player1: Addr::unchecked("player1"),
-    //         player2: Addr::unchecked("player2"),
-    //         player1_move: None,
-    //         player2_move: None,
-    //         player1_hands_won: 0,
-    //         player2_hands_won: 0,
-    //         hands_tied: 0,
-    //         bet_amount: coins(2, "token"),
-    //         player1_bet_deposited: true,
-    //         player2_bet_deposited: true,
-    //         result: None,
-    //         num_hands_to_win: 2,
-    //         // updated_at: mock_env().block.time.nanos() / 1_000_000,
-    //         updated_at: mock_env().block.time.nanos(),
-    //     };
-
-    //     let query_game = QueryMsg::GetGameByPlayers {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //     };
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state1);
-
-    //     let rock_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Rock.to_string(), "1").as_bytes())
-    //     );
-    //     let paper_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Paper.to_string(), "1").as_bytes())
-    //     );
-
-    //     let scissor_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Scissors.to_string(), "1").as_bytes())
-    //     );
-
-    //     let player1_commit_message1 = ExecuteMsg::CommitMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         hashed_move: rock_move_hash.clone(),
-    //     };
-
-    //     let player2_commit_message1 = ExecuteMsg::CommitMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         hashed_move: paper_move_hash.clone(),
-    //     };
-
-    //     // player 1 commit move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         player1_commit_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     let game_state3 = GameState {
-    //         player1_move: Some(PlayerMove::HashedMove(rock_move_hash.clone())),
-    //         ..game_state1.clone()
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state3);
-
-    //     // player 2 commit move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         player2_commit_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     let game_state4 = GameState {
-    //         player2_move: Some(PlayerMove::HashedMove(paper_move_hash.clone())),
-    //         ..game_state3.clone()
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state4);
-
-    //     let player1_reveal_message1 = ExecuteMsg::RevealMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         game_move: GameMove::Rock,
-    //         nonce: String::from("1"),
-    //     };
-
-    //     let player2_reveal_message1 = ExecuteMsg::RevealMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         game_move: GameMove::Paper,
-    //         nonce: String::from("1"),
-    //     };
-
-    //     // player 1 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         player1_reveal_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     let game_state5 = GameState {
-    //         player1_move: Some(PlayerMove::GameMove(GameMove::Rock)),
-    //         ..game_state4.clone()
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state5);
-
-    //     // player 2 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         player2_reveal_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     let game_state6 = GameState {
-    //         player1_move: None,
-    //         player2_move: None,
-    //         player2_hands_won: 1,
-    //         ..game_state5.clone()
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state6);
-
-    //     // player 1 commit move
-
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         player1_commit_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     // player 2 commit move
-
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         player2_commit_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     // player 1 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         player1_reveal_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     // player 2 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         player2_reveal_message1.clone(),
-    //     )
-    //     .unwrap();
-
-    //     // so now the game should be over
-    //     // which means if we query for the game it is not there
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert!(game.game.is_none());
-
-    //     // now query the leaderboard
-
-    //     let query_leaderboard = QueryMsg::GetLeaderboard {
-    //         start_after: None,
-    //         limit: None,
-    //     };
-    //     let leaderboard: GetLeaderboardResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_leaderboard.clone()).unwrap())
-    //             .unwrap();
-
-    //     println!("{:?}", leaderboard);
-    // }
 
     #[test]
     fn test_leaderboard() {
@@ -1721,9 +1156,6 @@ mod tests {
             String::from("player4"),
             3,
         );
-        // play_hand(&mut deps, String::from("player3"), String::from("player4"));
-        // play_hand(&mut deps, String::from("player4"), String::from("player1"));
-        // play_hand(&mut deps, String::from("player2"), String::from("player3"));
 
         // index_key() over UniqueIndex works.
         // let age_key = (I32Key::from(-50), b"".to_vec());
@@ -1776,332 +1208,6 @@ mod tests {
         println!("Leaderboard Keys:");
         println!("{:?}", leaderboard_res);
 
-        // let query_leaderboard = QueryMsg::GetLeaderboard {
-        //     start_after: None,
-        //     limit: None,
-        // };
-        // let leaderboard: GetLeaderboardResponse =
-        //     from_binary(&query(deps.as_ref(), mock_env(), query_leaderboard.clone()).unwrap())
-        //         .unwrap();
-
-        // println!("Leaderboard External Res:");
-        // println!("{:?}", leaderboard);
         println!("End test")
     }
-
-    // #[test]
-    // fn play_game_with_upsert() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // move hashes
-    //     let rock_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Rock.to_string(), "1").as_bytes())
-    //     );
-    //     let paper_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Paper.to_string(), "1").as_bytes())
-    //     );
-
-    //     let scissor_move_hash = format!(
-    //         "{:x}",
-    //         Sha256::digest(format!("{}{}", GameMove::Scissors.to_string(), "1").as_bytes())
-    //     );
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create players
-    //     let player1_funds = mock_info("player1", &coins(2, "token"));
-    //     let player2_funds = mock_info("player2", &coins(2, "token"));
-
-    //     let player1 = mock_info("player1", &coins(0, "token"));
-    //     let player2 = mock_info("player2", &coins(0, "token"));
-
-    //     // create start game messages
-    //     let upsert_game_message1 = ExecuteMsg::UpsertGameWithMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         hashed_move: rock_move_hash.clone(),
-    //     };
-
-    //     let upsert_game_message2 = ExecuteMsg::UpsertGameWithMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         hashed_move: paper_move_hash.clone(),
-    //     };
-
-    //     // player1 upsert game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1_funds.clone(),
-    //         upsert_game_message1,
-    //     )
-    //     .unwrap();
-
-    //     // player2 upsert game
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2_funds.clone(),
-    //         upsert_game_message2,
-    //     )
-    //     .unwrap();
-
-    //     let game_state1 = GameState {
-    //         player1: Addr::unchecked("player1"),
-    //         player2: Addr::unchecked("player2"),
-    //         player1_move: Some(PlayerMove::HashedMove(rock_move_hash.clone())),
-    //         player2_move: Some(PlayerMove::HashedMove(paper_move_hash.clone())),
-    //         player1_hands_won: 0,
-    //         player2_hands_won: 0,
-    //         hands_tied: 0,
-    //         bet_amount: coins(2, "token"),
-    //         player1_bet_deposited: true,
-    //         player2_bet_deposited: true,
-    //         result: None,
-    //         num_hands_to_win: 2,
-    //     };
-
-    //     let query_game = QueryMsg::GetGameByPlayers {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //     };
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state1);
-
-    //     // REVEALING MOVES --------------------------
-    //     let player1_reveal_message1 = ExecuteMsg::RevealMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         game_move: GameMove::Rock,
-    //         nonce: String::from("1"),
-    //     };
-
-    //     let player2_reveal_message1 = ExecuteMsg::RevealMove {
-    //         player1: String::from("player1"),
-    //         player2: String::from("player2"),
-    //         game_move: GameMove::Paper,
-    //         nonce: String::from("1"),
-    //     };
-
-    //     // player 1 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player1.clone(),
-    //         player1_reveal_message1,
-    //     )
-    //     .unwrap();
-
-    //     // player 2 reveal move
-    //     execute(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         player2.clone(),
-    //         player2_reveal_message1,
-    //     )
-    //     .unwrap();
-
-    //     let game_state2 = GameState {
-    //         player1_move: None,
-    //         player2_move: None,
-    //         player2_hands_won: 1,
-    //         ..game_state1.clone()
-    //     };
-
-    //     let game: GetGameByPlayersResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_game.clone()).unwrap()).unwrap();
-
-    //     assert_eq!(game.game.unwrap(), game_state2);
-    // }
-
-    // #[test]
-    // fn start_multiple_games() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create hosts
-    //     let host1 = mock_info("host1", &coins(2, "token"));
-    //     let host2 = mock_info("host2", &coins(2, "token"));
-
-    //     // create start game messages
-    //     let msg1 = ExecuteMsg::StartGame {
-    //         player2: String::from("opponent1"),
-    //     };
-
-    //     let msg2 = ExecuteMsg::StartGame {
-    //         player2: String::from("opponent2"),
-    //     };
-
-    //     let msg3 = ExecuteMsg::StartGame {
-    //         player2: String::from("opponent3"),
-    //     };
-
-    //     // start three games
-    //     execute(deps.as_mut(), mock_env(), host1.clone(), msg1).unwrap();
-    //     let game_state1 = GameState {
-    //         host: Addr::unchecked("host1"),
-    //         opponent: Addr::unchecked("opponent1"),
-    //         host_move: GameMove::Paper,
-    //         opp_move: None,
-    //         result: None,
-    //     };
-
-    //     execute(deps.as_mut(), mock_env(), host2.clone(), msg2).unwrap();
-    //     let game_state2 = GameState {
-    //         host: Addr::unchecked("host2"),
-    //         opponent: Addr::unchecked("opponent2"),
-    //         host_move: GameMove::Paper,
-    //         opp_move: None,
-    //         result: None,
-    //     };
-
-    //     execute(deps.as_mut(), mock_env(), host2.clone(), msg3).unwrap();
-    //     let game_state3 = GameState {
-    //         host: Addr::unchecked("host2"),
-    //         opponent: Addr::unchecked("opponent3"),
-    //         host_move: GameMove::Paper,
-    //         opp_move: None,
-    //         result: None,
-    //     };
-
-    //     // get all games
-    //     let query_games = QueryMsg::GetGames {};
-    //     let all_games: GetGamesResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query_games).unwrap()).unwrap();
-    //     println!("Games:");
-    //     println!("{:?}", all_games);
-    //     assert_eq!(
-    //         all_games.games,
-    //         vec![
-    //             game_state1.clone(),
-    //             game_state2.clone(),
-    //             game_state3.clone()
-    //         ]
-    //     );
-
-    //     // get all games with host1
-    //     let query1 = QueryMsg::GetGamesByHost {
-    //         host: String::from("host1"),
-    //     };
-    //     let host_games: GetGamesResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), query1).unwrap()).unwrap();
-    //     println!("Host Games:");
-    //     println!("{:?}", host_games);
-    //     assert_eq!(host_games.games, vec![game_state1.clone()]);
-
-    //     // get all games with opponent3
-    //     let opponent_query = QueryMsg::GetGamesByOpponent {
-    //         opponent: String::from("opponent3"),
-    //     };
-    //     let opponent_games: GetGamesByOpponentResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), opponent_query).unwrap()).unwrap();
-    //     println!("Opponent 1 Games:");
-    //     println!("{:?}", opponent_games);
-    //     assert_eq!(opponent_games.games, vec![game_state3.clone()]);
-    // }
-
-    // #[test]
-    // fn test_admin() {
-    //     const INIT_ADMIN: &str = "juan";
-    //     const USER1: &str = "somebody";
-    //     // const USER2: &str = "else";
-    //     // const USER3: &str = "funny";
-
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg {
-    //         admin: Some(String::from(INIT_ADMIN)),
-    //     };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // query admin
-    //     let get_admin_msg = QueryMsg::Admin {};
-    //     let res: AdminResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), get_admin_msg).unwrap()).unwrap();
-    //     assert_eq!(
-    //         res,
-    //         AdminResponse {
-    //             admin: Some(String::from(INIT_ADMIN))
-    //         }
-    //     );
-
-    //     // update admin
-
-    //     let info = mock_info(INIT_ADMIN, &coins(2, "token"));
-    //     let update_admin_msg = ExecuteMsg::UpdateAdmin {
-    //         admin: Some(String::from(USER1)),
-    //     };
-    //     let _res: Response = execute(deps.as_mut(), mock_env(), info, update_admin_msg).unwrap();
-
-    //     // query admin
-    //     let get_admin_msg = QueryMsg::Admin {};
-    //     let res: AdminResponse =
-    //         from_binary(&query(deps.as_ref(), mock_env(), get_admin_msg).unwrap()).unwrap();
-    //     assert_eq!(
-    //         res,
-    //         AdminResponse {
-    //             admin: Some(String::from(USER1))
-    //         }
-    //     );
-    // }
-
-    // #[test]
-    // fn test_respond() {
-    //     // get deps
-    //     let mut deps = mock_dependencies(&coins(2, "token"));
-
-    //     // instantiate smart contract
-    //     let msg = InstantiateMsg { admin: None };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // create hosts
-    //     let host1 = mock_info("host1", &coins(2, "token"));
-    //     let host2 = mock_info("host2", &coins(2, "token"));
-    //     let opponent1 = mock_info("opponent1", &coins(2, "token"));
-
-    //     // create start game messages
-    //     let msg1 = ExecuteMsg::StartGame {
-    //         opponent: String::from("opponent1"),
-    //         host_move: GameMove::Paper,
-    //     };
-
-    //     // start three games
-    //     execute(deps.as_mut(), mock_env(), host1.clone(), msg1).unwrap();
-
-    //     let respond_msg = ExecuteMsg::Respond {
-    //         host: String::from("host1"),
-    //         opp_move: GameMove::Scissors,
-    //     };
-
-    //     let res = execute(deps.as_mut(), mock_env(), opponent1.clone(), respond_msg).unwrap();
-    //     println!("{}", &res.attributes[0].value);
-    //     let final_game_state: GameState = serde_json::from_str(&res.attributes[0].value).unwrap();
-    //     assert_eq!(
-    //         final_game_state,
-    //         GameState {
-    //             host: Addr::unchecked("host1"),
-    //             opponent: Addr::unchecked("opponent1"),
-    //             host_move: GameMove::Paper,
-    //             opp_move: Some(GameMove::Scissors),
-    //             result: Some(GameResult::Player2Wins),
-    //         }
-    //     )
-    // }
 }
