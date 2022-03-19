@@ -927,12 +927,12 @@ pub fn get_game_by_player(deps: Deps, player: String) -> StdResult<GetGameByPlay
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
 
-    let unmatched_players = query_res
+    let player_is_unmatched = query_res
         .iter()
         .map(|(_, b)| b.address.clone())
-        .collect::<Vec<_>>();
+        .any(|x| x == player_addr);
 
-    if unmatched_players.contains(&player_addr) {
+    if player_is_unmatched {
         Ok(GetGameByPlayerResponse {
             game: None,
             waiting_for_opponent: true,
@@ -1072,13 +1072,7 @@ mod tests {
             .unwrap();
 
             // player 2 join game
-            execute(
-                deps.as_mut(),
-                mock_env(),
-                player2_funds,
-                join_game_message,
-            )
-            .unwrap();
+            execute(deps.as_mut(), mock_env(), player2_funds, join_game_message).unwrap();
 
             let player1_commit_message1 = ExecuteMsg::CommitMove {
                 player1: player1_name.clone(),
@@ -1125,22 +1119,10 @@ mod tests {
             };
 
             // player 1 reveal move
-            execute(
-                deps.as_mut(),
-                mock_env(),
-                player1,
-                player1_reveal_message1,
-            )
-            .unwrap();
+            execute(deps.as_mut(), mock_env(), player1, player1_reveal_message1).unwrap();
 
             // player 2 reveal move
-            execute(
-                deps.as_mut(),
-                mock_env(),
-                player2,
-                player2_reveal_message1,
-            )
-            .unwrap();
+            execute(deps.as_mut(), mock_env(), player2, player2_reveal_message1).unwrap();
         }
 
         play_hand(
