@@ -1018,7 +1018,7 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, from_binary, OwnedDeps};
+    use cosmwasm_std::{coins, OwnedDeps};
 
     #[test]
     fn test_leaderboard() {
@@ -1039,16 +1039,16 @@ mod tests {
             // define moves
             let rock_move_hash = format!(
                 "{:x}",
-                Sha256::digest(format!("{}{}", GameMove::Rock.to_string(), "1").as_bytes())
+                Sha256::digest(format!("{}{}", GameMove::Rock, "1").as_bytes())
             );
             let paper_move_hash = format!(
                 "{:x}",
-                Sha256::digest(format!("{}{}", GameMove::Paper.to_string(), "1").as_bytes())
+                Sha256::digest(format!("{}{}", GameMove::Paper, "1").as_bytes())
             );
 
-            let scissor_move_hash = format!(
+            let _scissor_move_hash = format!(
                 "{:x}",
-                Sha256::digest(format!("{}{}", GameMove::Scissors.to_string(), "1").as_bytes())
+                Sha256::digest(format!("{}{}", GameMove::Scissors, "1").as_bytes())
             );
 
             // create players
@@ -1066,7 +1066,7 @@ mod tests {
             execute(
                 deps.as_mut(),
                 mock_env(),
-                player1_funds.clone(),
+                player1_funds,
                 join_game_message.clone(),
             )
             .unwrap();
@@ -1075,21 +1075,21 @@ mod tests {
             execute(
                 deps.as_mut(),
                 mock_env(),
-                player2_funds.clone(),
-                join_game_message.clone(),
+                player2_funds,
+                join_game_message,
             )
             .unwrap();
 
             let player1_commit_message1 = ExecuteMsg::CommitMove {
                 player1: player1_name.clone(),
                 player2: player2_name.clone(),
-                hashed_move: rock_move_hash.clone(),
+                hashed_move: rock_move_hash,
             };
 
             let player2_commit_message1 = ExecuteMsg::CommitMove {
                 player1: player1_name.clone(),
                 player2: player2_name.clone(),
-                hashed_move: paper_move_hash.clone(),
+                hashed_move: paper_move_hash,
             };
 
             // player 1 commit move
@@ -1097,7 +1097,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 player1.clone(),
-                player1_commit_message1.clone(),
+                player1_commit_message1,
             )
             .unwrap();
 
@@ -1106,7 +1106,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 player2.clone(),
-                player2_commit_message1.clone(),
+                player2_commit_message1,
             )
             .unwrap();
 
@@ -1118,8 +1118,8 @@ mod tests {
             };
 
             let player2_reveal_message1 = ExecuteMsg::RevealMove {
-                player1: player1_name.clone(),
-                player2: player2_name.clone(),
+                player1: player1_name,
+                player2: player2_name,
                 game_move: GameMove::Paper,
                 nonce: String::from("1"),
             };
@@ -1128,8 +1128,8 @@ mod tests {
             execute(
                 deps.as_mut(),
                 mock_env(),
-                player1.clone(),
-                player1_reveal_message1.clone(),
+                player1,
+                player1_reveal_message1,
             )
             .unwrap();
 
@@ -1137,8 +1137,8 @@ mod tests {
             execute(
                 deps.as_mut(),
                 mock_env(),
-                player2.clone(),
-                player2_reveal_message1.clone(),
+                player2,
+                player2_reveal_message1,
             )
             .unwrap();
         }
@@ -1158,11 +1158,11 @@ mod tests {
 
         // index_key() over UniqueIndex works.
         // let age_key = (I32Key::from(-50), b"".to_vec());
-        let min_winnings_key = leaderboard()
+        let _min_winnings_key = leaderboard()
             .idx
             .winnings
             .index_key((I32Key::from(-5), b"".to_vec()));
-        let max_winnings_key = leaderboard()
+        let _max_winnings_key = leaderboard()
             .idx
             .winnings
             .index_key((I32Key::from(5), b"".to_vec()));
@@ -1197,8 +1197,8 @@ mod tests {
                 deps.as_mut().storage,
                 // None,
                 // Some(Bound::exclusive(max_winnings_key)),
-                Some(Bound::inclusive(zero_winnings_key.clone())),
-                Some(Bound::exclusive(most_negative_key.clone())),
+                Some(Bound::inclusive(zero_winnings_key)),
+                Some(Bound::exclusive(most_negative_key)),
                 // None,
                 Order::Descending,
             )
