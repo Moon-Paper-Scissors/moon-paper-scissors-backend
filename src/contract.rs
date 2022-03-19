@@ -1,14 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Response, StdResult,
+    to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    Response, StdResult,
 };
 use cw0::maybe_addr;
 use cw2::set_contract_version;
 
 use sha2::Digest;
-
 
 use sha2::Sha256;
 use std::str;
@@ -19,8 +18,8 @@ use crate::msg::{
     GetLeaderboardResponse, GetOpenGamesResponse, InstantiateMsg, QueryMsg,
 };
 use crate::state::{
-    game_states, leaderboard, GameMove, GameResult, GameState, PlayerMove,
-    UnmatchedPlayer, UserProfile, ADMIN, UNMATCHED_PLAYERS,
+    game_states, leaderboard, GameMove, GameResult, GameState, PlayerMove, UnmatchedPlayer,
+    UserProfile, ADMIN, UNMATCHED_PLAYERS,
 };
 
 use cw_storage_plus::{Bound, I32Key, U8Key};
@@ -724,7 +723,7 @@ fn send_double_tokens(to_address: Addr, amount: Vec<Coin>) -> Response {
         }),
         CosmosMsg::Bank(BankMsg::Send {
             to_address: to_address.into(),
-            amount: amount,
+            amount,
         }),
     ])
 }
@@ -1019,7 +1018,7 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, from_binary};
+    use cosmwasm_std::{coins, from_binary, OwnedDeps};
 
     #[test]
     fn test_leaderboard() {
